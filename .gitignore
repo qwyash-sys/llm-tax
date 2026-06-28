@@ -1,0 +1,5 @@
+.env
+__pycache__/
+chroma/
+*.docx
+3.4.1 gemini 변경.ipynb
