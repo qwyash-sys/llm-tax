@@ -1,9 +1,7 @@
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_pinecone import PineconeVectorStore
-from langchain_upstage import ChatUpstage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain.chains import RetrievalQA
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 
