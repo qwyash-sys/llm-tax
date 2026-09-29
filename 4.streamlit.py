@@ -40,7 +40,7 @@ if user_question := st.chat_input(placeholder="세금관련 궁금증을 질문�
             ai_message = st.write_stream(ai_message_stream)   # ← 반환값 받기
         st.session_state.message_list.append({"role": "ai", "content": ai_message})
         
-    with st.sidebar:
+with st.sidebar:
     if st.button("🔧 임베딩 연속 호출 테스트"):
         from llm import debug_embedding_test
         for ok, msg in debug_embedding_test():
