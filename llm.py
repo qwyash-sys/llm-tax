@@ -75,23 +75,29 @@ def get_ai_message(user_message, history):
     else:
         rewritten_question = user_message
 
-    retriever, chain = get_qa_chain()
-
     docs = None
     last_err = None
     for attempt in range(3):
         try:
-            docs = retriever.invoke(rewritten_question)
+            # 매 시도마다 임베딩/리트리버를 완전히 새로 생성 (기존 객체 재사용 안 함)
+            fresh_embedding = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
+            fresh_db = PineconeVectorStore.from_existing_index(
+                index_name='tax-gemini-index', embedding=fresh_embedding
+            )
+            fresh_retriever = fresh_db.as_retriever(search_kwargs={'k': 4})
+            docs = fresh_retriever.invoke(rewritten_question)
             break
         except Exception as e:
             last_err = e
-            st.warning(f"임베딩 시도 {attempt+1} 실패, 재시도 중...")
-            time.sleep(1.5)
+            st.warning(f"임베딩 시도 {attempt+1} 실패(새 클라이언트): {e!r}")
+            time.sleep(1.0)
+
     if docs is None:
         st.error(f"임베딩 최종 실패: {last_err!r}")
         raise last_err
 
     context = format_docs(docs)
+    _, chain = get_qa_chain()
     return chain.stream({"context": context, "question": rewritten_question})
     
 def debug_embedding_test(n=3):
