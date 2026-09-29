@@ -9,8 +9,8 @@ from llm import get_ai_message
 
 
 st.set_page_config(page_title="소득세 챗봇", page_icon="🤖")
-st.title("소득세 챗봇")
-st.caption("소득세에 관련한 모든것을 답해줘요")
+st.title("세금 챗봇")
+st.caption("세금 관련한 모든것을 답해줘요")
 
 load_dotenv()
 if 'message_list' not in st.session_state:
@@ -21,7 +21,7 @@ for message in st.session_state.message_list:
         st.write(message["content"])
 
 
-if user_question := st.chat_input(placeholder="소득세 궁금증 넣어보라"):
+if user_question := st.chat_input(placeholder="세금관련 궁금증을 질문해보세요!"):
     with st.chat_message("user"):
         st.write(user_question)
     st.session_state.message_list.append({"role": "user", "content":user_question})
