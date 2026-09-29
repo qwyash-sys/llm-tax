@@ -65,12 +65,33 @@ def get_qa_chain():
     return qa_chain
 
 
+# def get_ai_message(user_message, history):
+#     if history:
+#         rewritten_question = get_dictionary_chain().invoke(
+#             {"question": user_message, "history": history}
+#         )
+#     else:
+#         rewritten_question = user_message
+#     print("=== 재작성된 질문:", rewritten_question)   # 추가
+#     return get_qa_chain().stream(rewritten_question)
+
 def get_ai_message(user_message, history):
     if history:
-        rewritten_question = get_dictionary_chain().invoke(
-            {"question": user_message, "history": history}
-        )
+        try:
+            rewritten_question = get_dictionary_chain().invoke(
+                {"question": user_message, "history": history}
+            )
+        except Exception as e:
+            print("!!! dictionary_chain 실패:", repr(e))
+            raise
     else:
         rewritten_question = user_message
-    print("=== 재작성된 질문:", rewritten_question)   # 추가
-    return get_qa_chain().stream(rewritten_question)
+    print("=== 재작성된 질문:", rewritten_question)
+
+    try:
+        # stream()은 지연 실행이라 list()로 강제 소모시켜야 여기서 에러가 잡힘
+        chunks = list(get_qa_chain().stream(rewritten_question))
+    except Exception as e:
+        print("!!! qa_chain 실패:", repr(e))
+        raise
+    return iter(chunks)
