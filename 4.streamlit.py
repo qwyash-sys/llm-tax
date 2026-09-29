@@ -7,6 +7,14 @@ from dotenv import load_dotenv
 from llm import get_ai_message
 #########기존 ipynb에서 개발했던 랭체인##########
 
+st.markdown("""
+<style>
+[data-testid="stToolbar"] {display: none;}
+[data-testid="stHeader"] {display: none;}
+.stAppDeployButton {display: none;}
+#MainMenu {visibility: hidden;}
+</style>
+""", unsafe_allow_html=True)
 
 st.set_page_config(page_title="소득세 챗봇", page_icon="🤖")
 st.title("세금 챗봇")
