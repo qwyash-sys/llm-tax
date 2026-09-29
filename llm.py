@@ -4,12 +4,13 @@ from langchain_pinecone import PineconeVectorStore
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
+import streamlit as st
 
-
+@st.cache_resource
 def get_llm(model='gemini-2.5-flash-lite'):
     return ChatGoogleGenerativeAI(model=model, max_retries=1)
     
-
+@st.cache_resource
 def get_dictionary_chain():
     dictionary = ["사람을 나타내는 표현 -> 거주자"]
     llm = get_llm()
@@ -32,7 +33,7 @@ def get_dictionary_chain():
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
-
+@st.cache_resource
 def get_qa_chain():
     embedding = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
 
