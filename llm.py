@@ -42,7 +42,10 @@ def get_dictionary_chain():
 
 @lru_cache(maxsize=1)
 def get_qa_chain():
-    embedding = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
+    embedding = GoogleGenerativeAIEmbeddings(
+    model="models/gemini-embedding-001",
+    task_type="retrieval_query",
+)
     database = PineconeVectorStore.from_existing_index(
         index_name=INDEX_NAME, embedding=embedding
     )
