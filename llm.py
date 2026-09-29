@@ -96,3 +96,15 @@ def get_ai_message(user_message, history):
         print("!!! qa_chain 실패:", repr(e))
         raise
     return iter(chunks)
+
+
+def debug_embedding_test(n=3):
+    embedding = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
+    results = []
+    for i in range(n):
+        try:
+            vec = embedding.embed_query("테스트 질문입니다")
+            results.append((True, f"성공, 차원: {len(vec)}"))
+        except Exception as e:
+            results.append((False, repr(e)))
+    return results
