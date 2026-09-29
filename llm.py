@@ -36,14 +36,10 @@ def format_docs(docs):
 @st.cache_resource
 def get_qa_chain():
     embedding = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
-
-    # 파인콘 저장 데이터 불러오기
-    index_name = 'tax-gemini-index'
     database = PineconeVectorStore.from_existing_index(
-        index_name=index_name, embedding=embedding
+        index_name='tax-gemini-index', embedding=embedding
     )
     retriever = database.as_retriever(search_kwargs={'k': 4})
-
     llm = get_llm()
     prompt = ChatPromptTemplate.from_messages([
         ("system",
@@ -54,16 +50,9 @@ def get_qa_chain():
          "Context: {context}"),
         ("human", "{question}"),
     ])
+    chain = prompt | llm | StrOutputParser()
+    return retriever, chain   # 튜플로 따로 반환
 
-    # RetrievalQA 대신 LCEL 체인 (스트리밍 가능)
-    qa_chain = (
-        #1단계에서 context와 question에 대한 값을 넣어주는 용도임...
-        {"context": retriever | format_docs, "question": RunnablePassthrough()}
-        | prompt
-        | llm
-        | StrOutputParser()
-    )
-    return qa_chain
 
 
 # def get_ai_message(user_message, history):
@@ -78,24 +67,18 @@ def get_qa_chain():
 
 def get_ai_message(user_message, history):
     if history:
-        try:
-            rewritten_question = get_dictionary_chain().invoke(
-                {"question": user_message, "history": history}
-            )
-        except Exception as e:
-            print("!!! dictionary_chain 실패:", repr(e))
-            raise
+        rewritten_question = get_dictionary_chain().invoke(
+            {"question": user_message, "history": history}
+        )
     else:
         rewritten_question = user_message
     print("=== 재작성된 질문:", rewritten_question)
 
-    try:
-        # stream()은 지연 실행이라 list()로 강제 소모시켜야 여기서 에러가 잡힘
-        chunks = list(get_qa_chain().stream(rewritten_question))
-    except Exception as e:
-        print("!!! qa_chain 실패:", repr(e))
-        raise
-    return iter(chunks)
+    retriever, chain = get_qa_chain()
+    docs = retriever.invoke(rewritten_question)   # ← 스레드 풀 안 거치고 그냥 순차 호출
+    context = format_docs(docs)
+
+    return chain.stream({"context": context, "question": rewritten_question})
 
 
 def debug_embedding_test(n=3):
