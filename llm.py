@@ -4,13 +4,10 @@ from langchain_pinecone import PineconeVectorStore
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
-import streamlit as st
 
-@st.cache_resource
 def get_llm(model='gemini-2.5-flash-lite'):
     return ChatGoogleGenerativeAI(model=model, max_retries=1)
     
-@st.cache_resource
 def get_dictionary_chain():
     dictionary = ["사람을 나타내는 표현 -> 거주자"]
     llm = get_llm()
@@ -33,80 +30,37 @@ def get_dictionary_chain():
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
-@st.cache_resource
 def get_qa_chain():
     embedding = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
     database = PineconeVectorStore.from_existing_index(
         index_name='tax-gemini-index', embedding=embedding
     )
     retriever = database.as_retriever(search_kwargs={'k': 4})
+
     llm = get_llm()
     prompt = ChatPromptTemplate.from_messages([
         ("system",
          "You are an assistant for question-answering tasks. "
          "Use the following retrieved context to answer the question. "
+         "이전 대화 맥락도 참고해서, 애매한 질문이면 앞 대화를 바탕으로 이해해서 답변하세요. "
          "If you don't know the answer, just say that you don't know. "
          "Use three sentences maximum and keep the answer concise.\n\n"
          "Context: {context}"),
+        MessagesPlaceholder(variable_name="history"),
         ("human", "{question}"),
     ])
     chain = prompt | llm | StrOutputParser()
-    return retriever, chain   # 튜플로 따로 반환
+    return retriever, chain
 
-
-
-# def get_ai_message(user_message, history):
-#     if history:
-#         rewritten_question = get_dictionary_chain().invoke(
-#             {"question": user_message, "history": history}
-#         )
-#     else:
-#         rewritten_question = user_message
-#     print("=== 재작성된 질문:", rewritten_question)   # 추가
-#     return get_qa_chain().stream(rewritten_question)
-
-import time
 
 def get_ai_message(user_message, history):
-    if history:
-        rewritten_question = get_dictionary_chain().invoke(
-            {"question": user_message, "history": history}
-        )
-    else:
-        rewritten_question = user_message
-
-    docs = None
-    last_err = None
-    for attempt in range(3):
-        try:
-            # 매 시도마다 임베딩/리트리버를 완전히 새로 생성 (기존 객체 재사용 안 함)
-            fresh_embedding = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
-            fresh_db = PineconeVectorStore.from_existing_index(
-                index_name='tax-gemini-index', embedding=fresh_embedding
-            )
-            fresh_retriever = fresh_db.as_retriever(search_kwargs={'k': 4})
-            docs = fresh_retriever.invoke(rewritten_question)
-            break
-        except Exception as e:
-            last_err = e
-            st.warning(f"임베딩 시도 {attempt+1} 실패(새 클라이언트): {e!r}")
-            time.sleep(1.0)
-
-    if docs is None:
-        st.error(f"임베딩 최종 실패: {last_err!r}")
-        raise last_err
-
+    retriever, chain = get_qa_chain()
+    docs = retriever.invoke(user_message)   # 재작성 없이 원문 그대로 바로 임베딩 (Chat 호출이 앞에 없음)
     context = format_docs(docs)
-    _, chain = get_qa_chain()
-    return chain.stream({"context": context, "question": rewritten_question})
-    
-def debug_embedding_test(n=3):
-    embedding = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
-    results = []
-    for i in range(n):
-        try:
-            vec = embedding.embed_query("테스트 질문입니다")
-            results.append((True, f"성공, 차원: {len(vec)}"))
-        except Exception as e:
-            results.append((False, repr(e)))
-    return results
+
+    return chain.stream({
+        "context": context,
+        "question": user_message,
+        "history": history or [],
+    })
+
