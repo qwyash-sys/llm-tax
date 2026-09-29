@@ -72,10 +72,15 @@ def get_ai_message(user_message, history):
         )
     else:
         rewritten_question = user_message
-    print("=== 재작성된 질문:", rewritten_question)
+
+    st.info(f"재작성된 질문: {rewritten_question!r}")   # ← 채팅 화면에 바로 표시됨
 
     retriever, chain = get_qa_chain()
-    docs = retriever.invoke(rewritten_question)   # ← 스레드 풀 안 거치고 그냥 순차 호출
+    try:
+        docs = retriever.invoke(rewritten_question)
+    except Exception as e:
+        st.error(f"임베딩 실패! 질문 내용: {rewritten_question!r} / 에러: {e!r}")
+        raise
     context = format_docs(docs)
 
     return chain.stream({"context": context, "question": rewritten_question})
