@@ -65,6 +65,8 @@ def get_qa_chain():
 #     print("=== 재작성된 질문:", rewritten_question)   # 추가
 #     return get_qa_chain().stream(rewritten_question)
 
+import time
+
 def get_ai_message(user_message, history):
     if history:
         rewritten_question = get_dictionary_chain().invoke(
@@ -73,19 +75,25 @@ def get_ai_message(user_message, history):
     else:
         rewritten_question = user_message
 
-    st.info(f"재작성된 질문: {rewritten_question!r}")   # ← 채팅 화면에 바로 표시됨
-
     retriever, chain = get_qa_chain()
-    try:
-        docs = retriever.invoke(rewritten_question)
-    except Exception as e:
-        st.error(f"임베딩 실패! 질문 내용: {rewritten_question!r} / 에러: {e!r}")
-        raise
+
+    docs = None
+    last_err = None
+    for attempt in range(3):
+        try:
+            docs = retriever.invoke(rewritten_question)
+            break
+        except Exception as e:
+            last_err = e
+            st.warning(f"임베딩 시도 {attempt+1} 실패, 재시도 중...")
+            time.sleep(1.5)
+    if docs is None:
+        st.error(f"임베딩 최종 실패: {last_err!r}")
+        raise last_err
+
     context = format_docs(docs)
-
     return chain.stream({"context": context, "question": rewritten_question})
-
-
+    
 def debug_embedding_test(n=3):
     embedding = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
     results = []
